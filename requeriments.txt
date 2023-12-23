@@ -1,0 +1,3 @@
+pyTelegramBotApi
+pdf2image
+

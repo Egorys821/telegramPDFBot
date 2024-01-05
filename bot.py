@@ -1,7 +1,7 @@
 import os
 
 import telebot
-from pdf2image.pdf2image import convert_from_path
+from pdf2image.pdf2image import convert_from_path, pdfinfo_from_path
 
 BOT_TOKEN = os.environ.get('BOT_TOKEN')
 
@@ -19,20 +19,36 @@ def addfile(message):
     if file_name[-3:] != "pdf":
         bot.send_message(message.chat.id,"please send .pdf file :)")
         return
+   
+    pdf_path = f"files/{file_name}"
+    
     with open(f"files/{file_name}", 'wb') as new_file:
         new_file.write(downloaded_file)
-        bot.send_message(message.chat.id, "here they are:")
-        images = convert_from_path(f'files/{file_name}')
+        try:
 
-        for i in range(len(images)):
-            images[i].save(f"{file_name[:-4]}_{i+1}.jpg","JPEG")
+            info = pdfinfo_from_path(pdf_path)
+            page_index = 1
+            maxPages = info["Pages"]
+
+            bot.send_message(message.chat.id, "here they are:")
+
+            for page in range(1, maxPages+1, 5) : 
+
+                pages = convert_from_path(pdf_path, dpi=200, first_page=page, last_page = min(page+5-1,maxPages))
             
-            with open(f"{file_name[:-4]}_{i+1}.jpg",'rb') as jpg_file:
-                
-                #bot.send_photo(message.chat.id,jpg_file)
-                bot.send_document(message.chat.id, jpg_file)
-                os.remove(f'{file_name[:-4]}_{i+1}.jpg')
+                for count,page in enumerate(pages):
+                    page.save(f"files/{file_name[:-4]}_{page_index}.jpg","JPEG")
+                    bot.send_document(message.chat.id,open(f"files/{file_name[:-4]}_{page_index}.jpg","rb"))
+                    page_index += 1
+                    os.remove(f"files/{file_name[:-4]}_{page_index-1}.jpg")
+        except:
+            bot.send_message(message.chat.id, "Something's wrong I can feel it...")
+
+           
+          
+    bot.send_message(message.chat.id,f"{message.from_user.first_name} send me more pdf files!😋")
+
     os.remove(f"files/{file_name}")
-    bot.send_message(message.chat.id,"Send me more pdf files!😋")
 
 bot.infinity_polling()
+
